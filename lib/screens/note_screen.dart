@@ -1,57 +1,50 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../database/database.dart';
-import '../providers/database_provider.dart';
-import '../providers/notes_providers.dart';
+import '../data/mock_notes.dart';
+import '../models/note.dart';
 
 /// Pantalla de crear / editar.
 /// noteId == null -> crear nota nueva.
-/// noteId != null -> cargar la nota de la BD y editarla.
-class NoteScreen extends ConsumerWidget {
+/// noteId != null -> editar la nota con ese id.
+class NoteScreen extends StatelessWidget {
   const NoteScreen({super.key, this.noteId});
 
   final int? noteId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Modo crear: formulario vacío, sin tocar la BD.
+  Widget build(BuildContext context) {
+    // Modo crear: formulario vacío.
     if (noteId == null) {
       return const _NoteForm(note: null);
     }
 
-    // Modo editar: el FutureProvider con parámetro carga la nota.
-    final noteAsync = ref.watch(noteByIdProvider(id: noteId!));
+    final note = MockNotes.notes.where((n) => n.id == noteId).firstOrNull;
 
-    return noteAsync.when(
-      data: (note) => _NoteForm(note: note),
-      error: (error, _) => Scaffold(
+    if (note == null) {
+      return Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text('Error: $error')),
-      ),
-      loading: () => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
-      ),
-    );
+        body: Center(child: Text('No existe la nota con id $noteId')),
+      );
+    }
+
+    return _NoteForm(note: note);
   }
 }
 
 /// Formulario. Stateful porque los TextEditingController son estado local
-/// de la UI: no necesitan (ni deben) vivir en un provider.
-class _NoteForm extends ConsumerStatefulWidget {
+/// de la UI.
+class _NoteForm extends StatefulWidget {
   const _NoteForm({required this.note});
 
   /// null = crear, con valor = editar.
   final Note? note;
 
   @override
-  ConsumerState<_NoteForm> createState() => _NoteFormState();
+  State<_NoteForm> createState() => _NoteFormState();
 }
 
-class _NoteFormState extends ConsumerState<_NoteForm> {
+class _NoteFormState extends State<_NoteForm> {
   late final titleController = TextEditingController(text: widget.note?.title);
   late final bodyController = TextEditingController(text: widget.note?.body);
   late bool isImportant = widget.note?.isImportant ?? false;
@@ -65,39 +58,12 @@ class _NoteFormState extends ConsumerState<_NoteForm> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  void _save() {
     final title = titleController.text.trim();
-    final body = bodyController.text.trim();
     if (title.isEmpty) return;
 
-    final dao = ref.read(appDatabaseProvider).notesDao;
-
-    if (isEditing) {
-      // UPDATE: la data class + copyWith generan la fila completa
-      // y replace() la guarda buscando por primary key.
-      await dao.updateNote(
-        widget.note!.copyWith(
-          title: title,
-          body: body,
-          isImportant: isImportant,
-        ),
-      );
-    } else {
-      // INSERT: el Companion lleva solo los datos que aportamos.
-      // - title y body son required (columnas NOT NULL sin default)
-      // - isImportant es Value<bool>: si no lo mandáramos
-      //   (Value.absent()), la BD usaría su DEFAULT (false).
-      // - id y createdAt no se mandan: los resuelve la BD.
-      await dao.insertNote(
-        NotesCompanion.insert(
-          title: title,
-          body: body,
-          isImportant: Value(isImportant),
-        ),
-      );
-    }
-
-    if (mounted) context.pop();
+    // TODO: guardar en la base de datos cuando exista.
+    context.pop();
   }
 
   @override
@@ -110,7 +76,7 @@ class _NoteFormState extends ConsumerState<_NoteForm> {
           children: [
             TextField(
               controller: titleController,
-              maxLength: 50, // coincide con withLength(max: 50) de la tabla
+              maxLength: 50,
               decoration: const InputDecoration(
                 labelText: 'Título',
                 border: OutlineInputBorder(),
