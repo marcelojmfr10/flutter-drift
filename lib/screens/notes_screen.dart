@@ -1,3 +1,4 @@
+import 'package:drift_app/database/database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,65 +19,70 @@ class NotesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Mis notas')),
 
-      body: switch (notesAsync) {
-        AsyncData(value: final notes) when notes.isEmpty => const Center(
-            child: Text('No hay notas. ¡Crea la primera!'),
-          ),
-
-        AsyncData(value: final notes) => ListView.builder(
-            itemCount: notes.length,
-            itemBuilder: (context, index) {
-              final note = notes[index];
-
-              return Dismissible(
-                key: ValueKey(note.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 16),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                // DELETE: no tocamos el estado local, Drift re-emite
-                // el stream y la lista se reconstruye sola.
-                onDismissed: (_) => ref
-                    .read(appDatabaseProvider)
-                    .notesDao
-                    .deleteNote(note.id),
-
-                child: ListTile(
-                  title: Text(note.title),
-                  subtitle: Text(note.body, maxLines: 1, overflow: TextOverflow.ellipsis),
-
-                  // UPDATE rápido: copyWith de la data class generada
-                  // + replace() en el DAO (busca por primary key).
-                  leading: IconButton(
-                    icon: Icon(
-                      note.isImportant ? Icons.star : Icons.star_border,
-                      color: note.isImportant ? Colors.amber : null,
-                    ),
-                    // ref.read en callbacks (nunca ref.watch).
-                    onPressed: () => ref
-                        .read(appDatabaseProvider)
-                        .notesDao
-                        .updateNote(note.copyWith(isImportant: !note.isImportant)),
-                  ),
-
-                  onTap: () => context.push('/note/${note.id}'),
-                ),
-              );
-            },
-          ),
-
-        AsyncError(:final error) => Center(child: Text('Error: $error')),
-
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: notesAsync.when(
+        data: (notes) => _ListItems(notes: notes),
+        error: (error, _) => Center(child: Text('Error: $error')),
+        loading: () => const Center(child: CircularProgressIndicator()),
+      ),
 
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/note/new'),
         child: const Icon(Icons.add),
       ),
+    );
+  }
+}
+
+class _ListItems extends ConsumerWidget {
+  const _ListItems({required this.notes});
+
+  final List<Note> notes;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (notes.isEmpty) {
+      return const Center(child: Text('No hay notas. ¡Crea la primera!'));
+    }
+
+    return ListView.builder(
+      itemCount: notes.length,
+      itemBuilder: (context, index) {
+        final note = notes[index];
+        return Dismissible(
+          key: ValueKey(note.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            color: Colors.red,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 16),
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
+          onDismissed: (_) {
+            ref.read(appDatabaseProvider).notesDao.deleteNote(note.id);
+          },
+          child: ListTile(
+            title: Text(note.title),
+            subtitle: Text(
+              note.body,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            leading: IconButton(
+              icon: Icon(
+                note.isImportant ? Icons.star : Icons.star_border,
+                color: note.isImportant ? Colors.amber : null,
+              ),
+              onPressed: () {
+                ref
+                    .read(appDatabaseProvider)
+                    .notesDao
+                    .updateNote(note.copyWith(isImportant: !note.isImportant));
+              },
+            ),
+            onTap: () => context.push('/note/${note.id}'),
+          ),
+        );
+      },
     );
   }
 }

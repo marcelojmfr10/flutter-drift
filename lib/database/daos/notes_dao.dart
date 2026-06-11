@@ -48,6 +48,7 @@ class NotesDao extends DatabaseAccessor<AppDatabase> with _$NotesDaoMixin {
   /// DELETE con where. ¡Sin el where borraría TODA la tabla!
   /// .go() ejecuta y devuelve cuántas filas se eliminaron.
   Future<int> deleteNote(int id) {
-    return (delete(notes)..where((n) => n.id.equals(id))).go();
+    final query = delete(notes)..where((n) => n.id.equals(id));
+    return query.go();
   }
 }
