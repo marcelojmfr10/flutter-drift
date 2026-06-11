@@ -6,7 +6,7 @@ import '../models/note.dart';
 
 /// Pantalla de listado.
 /// Stateful solo para reflejar cambios visuales (dismiss, estrella)
-/// mientras no haya base de datos.
+/// Mientras no haya base de datos.
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
 

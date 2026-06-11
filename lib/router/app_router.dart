@@ -6,10 +6,7 @@ import '../screens/notes_screen.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const NotesScreen(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const NotesScreen()),
 
     // Una sola ruta para crear y editar:
     // /note/new  -> noteId = null (crear)
