@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:drift_app/database/daos/notes_dao.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -12,7 +13,7 @@ class Notes extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Notes])
+@DriftDatabase(tables: [Notes], daos: [NotesDao])
 class AppDatabase extends _$AppDatabase {
   // After generating code, this class needs to define a `schemaVersion` getter
   // and a constructor telling drift where the database should be stored.
