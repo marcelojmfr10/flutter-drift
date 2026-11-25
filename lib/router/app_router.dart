@@ -1,5 +1,4 @@
 import 'package:go_router/go_router.dart';
-
 import '../screens/note_screen.dart';
 import '../screens/notes_screen.dart';
 
