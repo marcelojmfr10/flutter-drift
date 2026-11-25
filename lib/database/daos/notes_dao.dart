@@ -13,7 +13,11 @@ class NotesDao extends DatabaseAccessor<AppDatabase> with _$NotesDaoMixin {
   NotesDao(super.attachedDatabase);
 
   Stream<List<Note>> watchAllNotes() {
-    final query = select(notes);
+    final query = select(notes)
+      ..orderBy([
+        (n) => OrderingTerm(expression: n.isImportant, mode: OrderingMode.desc),
+        (n) => OrderingTerm(expression: n.createdAt, mode: OrderingMode.desc),
+      ]);
     return query.watch();
   }
 

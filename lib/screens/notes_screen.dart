@@ -1,4 +1,5 @@
 import 'package:drift_app/database/database.dart';
+import 'package:drift_app/providers/database_provider.dart';
 import 'package:drift_app/providers/notes_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -35,12 +36,12 @@ class NotesScreen extends ConsumerWidget {
   }
 }
 
-class _ListItems extends StatelessWidget {
+class _ListItems extends ConsumerWidget {
   final List<Note> notes;
   const _ListItems({required this.notes});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, ref) {
     if (notes.isEmpty) {
       return Center(child: Text('No hay notas. ¡Crea la primera!'));
     }
@@ -49,6 +50,7 @@ class _ListItems extends StatelessWidget {
       itemCount: notes.length,
       itemBuilder: (context, index) {
         final note = notes[index];
+
         return Dismissible(
           key: ValueKey(note.id),
           direction: DismissDirection.endToStart,
@@ -58,9 +60,8 @@ class _ListItems extends StatelessWidget {
             padding: const EdgeInsets.only(right: 16),
             child: const Icon(Icons.delete, color: Colors.white),
           ),
-          // TODO: borrar en la base de datos cuando exista.
           onDismissed: (_) {
-            // setState(() => notes.removeAt(index))
+            ref.read(appDatabaseProvider).notesDao.deleteNote(note.id);
           },
           child: ListTile(
             title: Text(note.title),
@@ -74,13 +75,11 @@ class _ListItems extends StatelessWidget {
                 note.isImportant ? Icons.star : Icons.star_border,
                 color: note.isImportant ? Colors.amber : null,
               ),
-              // TODO: actualizar en la base de datos cuando exista.
               onPressed: () {
-                //   setState(() {
-                //   notes[index] = note.copyWith(
-                //     isImportant: !note.isImportant,
-                //   );
-                // });
+                ref
+                    .read(appDatabaseProvider)
+                    .notesDao
+                    .updateNote(note.copyWith(isImportant: !note.isImportant));
               },
             ),
             onTap: () => context.push('/note/${note.id}'),
