@@ -1,50 +1,49 @@
+import 'package:drift/drift.dart' show Value;
+import 'package:drift_app/database/database.dart';
+import 'package:drift_app/providers/database_provider.dart';
+import 'package:drift_app/providers/notes_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
-
-import '../data/mock_notes.dart';
-import '../models/note.dart';
 
 /// Pantalla de crear / editar.
 /// noteId == null -> crear nota nueva.
 /// noteId != null -> editar la nota con ese id.
-class NoteScreen extends StatelessWidget {
+class NoteScreen extends ConsumerWidget {
   const NoteScreen({super.key, this.noteId});
 
   final int? noteId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, ref) {
     // Modo crear: formulario vacío.
     if (noteId == null) {
       return const _NoteForm(note: null);
     }
 
-    final note = MockNotes.notes.where((n) => n.id == noteId).firstOrNull;
+    final noteAsync = ref.watch(noteByIdProvider(id: noteId!));
 
-    if (note == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: Center(child: Text('No existe la nota con id $noteId')),
-      );
-    }
-
-    return _NoteForm(note: note);
+    return noteAsync.when(
+      data: (note) => _NoteForm(note: note),
+      error: (error, stackTrace) => Center(child: Text('Error: $error')),
+      loading: () => Center(child: CircularProgressIndicator()),
+    );
   }
 }
 
 /// Formulario. Stateful porque los TextEditingController son estado local
 /// de la UI.
-class _NoteForm extends StatefulWidget {
+class _NoteForm extends ConsumerStatefulWidget {
   const _NoteForm({required this.note});
 
   /// null = crear, con valor = editar.
   final Note? note;
 
   @override
-  State<_NoteForm> createState() => _NoteFormState();
+  ConsumerState<_NoteForm> createState() => _NoteFormState();
 }
 
-class _NoteFormState extends State<_NoteForm> {
+class _NoteFormState extends ConsumerState<_NoteForm> {
   late final titleController = TextEditingController(text: widget.note?.title);
   late final bodyController = TextEditingController(text: widget.note?.body);
   late bool isImportant = widget.note?.isImportant ?? false;
@@ -58,12 +57,32 @@ class _NoteFormState extends State<_NoteForm> {
     super.dispose();
   }
 
-  void _save() {
+  void _save() async {
+    final dao = ref.read(appDatabaseProvider).notesDao;
     final title = titleController.text.trim();
+    final body = bodyController.text.trim();
     if (title.isEmpty) return;
+    if (body.isEmpty) return;
 
-    // TODO: guardar en la base de datos cuando exista.
-    context.pop();
+    if (isEditing) {
+      await dao.updateNote(
+        widget.note!.copyWith(
+          title: title,
+          body: body,
+          isImportant: isImportant,
+        ),
+      );
+    } else {
+      await dao.insertNote(
+        NotesCompanion.insert(
+          title: title,
+          body: body,
+          isImportant: Value(isImportant),
+        ),
+      );
+    }
+
+    if (mounted) context.pop();
   }
 
   @override

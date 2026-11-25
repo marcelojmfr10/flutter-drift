@@ -5,7 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 
 class NotesScreen extends ConsumerWidget {
-  NotesScreen({super.key});
+  const NotesScreen({super.key});
 
   @override
   Widget build(BuildContext context, ref) {
